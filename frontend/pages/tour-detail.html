@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Деталі туру — TourAgency</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <nav class="navbar" id="main-nav"></nav>
+
+  <div id="page-content" class="detail-wrap">
+    <div class="loading">Завантаження...</div>
+  </div>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-logo">✈ TourAgency</div>
+      <div class="footer-copy">© 2025 TourAgency</div>
+    </div>
+  </footer>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/nav.js"></script>
+  <script>
+    const tourId = new URLSearchParams(location.search).get('id');
+    const BADGE = { pending:'Очікує', confirmed:'Підтверджено', cancelled:'Скасовано' };
+
+    async function load() {
+      const wrap = document.getElementById('page-content');
+      if (!tourId) { wrap.innerHTML = '<div class="alert alert-error">Тур не знайдено</div>'; return; }
+
+      try {
+        const t    = await api.get('/tours/' + tourId);
+        const user = JSON.parse(localStorage.getItem('user') || 'null');
+        document.title = t.title + ' — TourAgency';
+
+        const img = t.imageUrl
+          ? `<img src="${t.imageUrl}" class="detail-img" alt="${t.title}">`
+          : `<div class="detail-placeholder">✈️</div>`;
+
+        const stars = t.hotel?.stars ? '⭐'.repeat(t.hotel.stars) : '';
+
+        const services = t.services?.length
+          ? `<div class="service-tags">${t.services.map(s=>`<span class="service-tag">✓ ${s.name}</span>`).join('')}</div>`
+          : '<p style="color:var(--muted);font-size:.88rem">—</p>';
+
+        const bookSection = user
+          ? `<div class="book-box">
+               <h3>✈️ Забронювати тур</h3>
+               <div id="book-alert"></div>
+               <div class="form-row">
+                 <div class="form-group">
+                   <label>Кількість осіб</label>
+                   <input type="number" id="persons" value="1" min="1" max="${t.seats}">
+                 </div>
+                 <div class="form-group">
+                   <label>Примітка</label>
+                   <input type="text" id="notes" placeholder="Необов'язково">
+                 </div>
+               </div>
+               <div class="book-total">
+                 До сплати: <strong id="total">${Number(t.price).toLocaleString('uk-UA')} грн</strong>
+               </div>
+               <button class="btn btn-success" onclick="book('${t._id}', ${t.price})" style="min-width:220px">
+                 ✔ Підтвердити бронювання
+               </button>
+             </div>`
+          : `<div class="book-box" style="text-align:center;padding:2rem">
+               <div style="font-size:2.5rem;margin-bottom:.8rem">🔒</div>
+               <p style="color:var(--muted);margin-bottom:1rem">Увійдіть у систему, щоб забронювати тур</p>
+               <a href="/pages/login.html" class="btn btn-primary">Увійти</a>
+               &nbsp;
+               <a href="/pages/register.html" class="btn btn-ghost">Реєстрація</a>
+             </div>`;
+
+        wrap.innerHTML = `
+          ${img}
+          <div class="detail-title">
+            ${t.title}
+            ${t.isHot ? '<span class="badge badge-hot">🔥 HOT</span>' : ''}
+          </div>
+          <p class="detail-desc">${t.description || ''}</p>
+
+          <div class="info-grid">
+            <div class="info-box"><div class="lbl">Країна</div><div class="val">📍 ${t.country?.name||'—'}</div></div>
+            <div class="info-box"><div class="lbl">Місто</div><div class="val">🏙 ${t.city?.name||'—'}</div></div>
+            <div class="info-box"><div class="lbl">Готель</div><div class="val">🏨 ${t.hotel?.name||'—'} ${stars}</div></div>
+            <div class="info-box"><div class="lbl">Тривалість</div><div class="val">📅 ${t.duration} днів</div></div>
+            <div class="info-box"><div class="lbl">Початок</div><div class="val">${new Date(t.startDate).toLocaleDateString('uk-UA')}</div></div>
+            <div class="info-box"><div class="lbl">Закінчення</div><div class="val">${new Date(t.endDate).toLocaleDateString('uk-UA')}</div></div>
+            <div class="info-box"><div class="lbl">Вільних місць</div><div class="val">🪑 ${t.seats}</div></div>
+            <div class="info-box"><div class="lbl">Ціна за особу</div><div class="val" style="color:var(--blue)">${Number(t.price).toLocaleString('uk-UA')} грн</div></div>
+          </div>
+
+          <h3 style="font-size:1rem;font-weight:700;margin-bottom:.6rem">Включено до туру</h3>
+          ${services}
+          ${bookSection}`;
+
+        document.getElementById('persons')?.addEventListener('input', e => {
+          const n = Math.max(1, Math.min(Number(e.target.value)||1, t.seats));
+          e.target.value = n;
+          document.getElementById('total').textContent =
+            (n * t.price).toLocaleString('uk-UA') + ' грн';
+        });
+
+      } catch (err) {
+        wrap.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+      }
+    }
+
+    async function book(tourId, price) {
+      const alertEl = document.getElementById('book-alert');
+      alertEl.innerHTML = '';
+      try {
+        await api.post('/bookings', {
+          tourId,
+          persons: Number(document.getElementById('persons').value),
+          notes:   document.getElementById('notes').value
+        });
+        alertEl.innerHTML = `<div class="alert alert-success">
+          ✅ Бронювання успішне! Перевірте
+          <a href="/pages/history.html" style="color:var(--green-dark);font-weight:600">Мої бронювання</a>.
+        </div>`;
+      } catch (err) {
+        alertEl.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+      }
+    }
+
+    load();
+  </script>
+</body>
+</html>

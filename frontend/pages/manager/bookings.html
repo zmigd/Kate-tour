@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Заявки — TourAgency</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <nav class="navbar" id="main-nav"></nav>
+
+  <div class="mgr-layout">
+    <nav class="mgr-sidebar" id="mgr-sidebar"></nav>
+
+    <main class="mgr-content">
+      <h2>Заявки клієнтів</h2>
+      <div id="alert"></div>
+
+      <!-- Filter row -->
+      <div style="display:flex;gap:.7rem;margin-bottom:1.2rem;flex-wrap:wrap">
+        <select id="f-status" class="status-sel" style="min-width:140px" onchange="load()">
+          <option value="">Всі статуси</option>
+          <option value="pending">Очікують</option>
+          <option value="confirmed">Підтверджені</option>
+          <option value="cancelled">Скасовані</option>
+        </select>
+      </div>
+
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Клієнт</th><th>Тур</th><th>Початок</th>
+              <th>Осіб</th><th>Сума</th><th>Заявка</th><th>Статус</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/nav.js"></script>
+  <script src="/js/manager.js"></script>
+  <script>
+    checkManager();
+    renderSidebar('bookings');
+
+    function fmt(d) { return d ? new Date(d).toLocaleDateString('uk-UA') : '—'; }
+
+    async function load() {
+      const tbody = document.getElementById('tbody');
+      tbody.innerHTML = '<tr><td colspan="7" class="loading">Завантаження...</td></tr>';
+      const statusFilter = document.getElementById('f-status').value;
+      try {
+        let list = await api.get('/bookings');
+        if (statusFilter) list = list.filter(b => b.status === statusFilter);
+        if (!list.length) {
+          tbody.innerHTML = '<tr><td colspan="7"><div class="empty"><p>Заявок немає</p></div></td></tr>';
+          return;
+        }
+        tbody.innerHTML = list.map(b => `
+          <tr>
+            <td>
+              <strong>${b.user?.name || '—'}</strong><br>
+              <small style="color:var(--muted)">${b.user?.email || ''}</small>
+            </td>
+            <td>${b.tour?.title || '—'}</td>
+            <td>${fmt(b.tour?.startDate)}</td>
+            <td>${b.persons}</td>
+            <td>${Number(b.totalPrice).toLocaleString('uk-UA')} грн</td>
+            <td>${fmt(b.createdAt)}</td>
+            <td>
+              <select class="status-sel" onchange="changeStatus('${b._id}', this.value)">
+                <option value="pending"   ${b.status==='pending'   ?'selected':''}>Очікує</option>
+                <option value="confirmed" ${b.status==='confirmed' ?'selected':''}>Підтверджено</option>
+                <option value="cancelled" ${b.status==='cancelled' ?'selected':''}>Скасовано</option>
+              </select>
+            </td>
+          </tr>`).join('');
+      } catch (err) {
+        document.getElementById('alert').innerHTML =
+          `<div class="alert alert-error">${err.message}</div>`;
+        tbody.innerHTML = '';
+      }
+    }
+
+    async function changeStatus(id, status) {
+      try {
+        await api.patch('/bookings/' + id, { status });
+        document.getElementById('alert').innerHTML =
+          `<div class="alert alert-success">Статус оновлено</div>`;
+        setTimeout(() => document.getElementById('alert').innerHTML = '', 2000);
+      } catch (err) {
+        document.getElementById('alert').innerHTML =
+          `<div class="alert alert-error">${err.message}</div>`;
+        load(); // revert
+      }
+    }
+
+    load();
+  </script>
+</body>
+</html>

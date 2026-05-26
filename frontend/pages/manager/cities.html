@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Міста — TourAgency</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <nav class="navbar" id="main-nav"></nav>
+
+  <div class="mgr-layout">
+    <nav class="mgr-sidebar" id="mgr-sidebar"></nav>
+
+    <main class="mgr-content">
+      <div class="mgr-toolbar">
+        <h2>Міста</h2>
+        <button class="btn btn-success" onclick="openModal()">+ Додати</button>
+      </div>
+      <div id="alert"></div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Назва</th><th>Країна</th><th>Дії</th></tr></thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal -->
+  <div class="modal-overlay" id="modal">
+    <div class="modal">
+      <div class="modal-hdr">
+        <h3 id="modal-title">Нове місто</h3>
+        <button class="modal-close" onclick="closeModal()">×</button>
+      </div>
+      <div id="modal-alert"></div>
+      <form id="frm">
+        <input type="hidden" id="f-id">
+        <div class="form-group"><label>Назва *</label><input id="f-name" required placeholder="Стамбул"></div>
+        <div class="form-group">
+          <label>Країна *</label>
+          <select id="f-country" required>
+            <option value="">Оберіть країну</option>
+          </select>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-success">Зберегти</button>
+          <button type="button" class="btn btn-ghost" onclick="closeModal()">Скасувати</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/nav.js"></script>
+  <script src="/js/manager.js"></script>
+  <script>
+    checkManager();
+    renderSidebar('cities');
+    let countries = [];
+
+    async function init() {
+      countries = await api.get('/countries');
+      const sel = document.getElementById('f-country');
+      countries.forEach(c => {
+        const o = document.createElement('option');
+        o.value = c._id; o.textContent = c.name; sel.appendChild(o);
+      });
+      load();
+    }
+
+    async function load() {
+      const tbody = document.getElementById('tbody');
+      try {
+        const list = await api.get('/cities');
+        tbody.innerHTML = list.length
+          ? list.map(c => `
+              <tr>
+                <td><strong>${c.name}</strong></td>
+                <td>${c.country?.name || '—'}</td>
+                <td><div class="tbl-actions">
+                  <button class="btn btn-ghost btn-sm" onclick='edit(${JSON.stringify(c)})'>✏️</button>
+                  <button class="btn btn-danger btn-sm" onclick="del('${c._id}')">🗑</button>
+                </div></td>
+              </tr>`).join('')
+          : '<tr><td colspan="3"><div class="empty"><p>Міст ще немає</p></div></td></tr>';
+      } catch (err) {
+        document.getElementById('alert').innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+      }
+    }
+
+    function openModal(c) {
+      document.getElementById('modal-title').textContent = c ? 'Редагувати місто' : 'Нове місто';
+      document.getElementById('f-id').value      = c?._id || '';
+      document.getElementById('f-name').value    = c?.name || '';
+      document.getElementById('f-country').value = c?.country?._id || c?.country || '';
+      document.getElementById('modal-alert').innerHTML = '';
+      document.getElementById('modal').classList.add('open');
+    }
+    function edit(c)    { openModal(c); }
+    function closeModal() { document.getElementById('modal').classList.remove('open'); }
+
+    document.getElementById('frm').addEventListener('submit', async e => {
+      e.preventDefault();
+      const id = document.getElementById('f-id').value;
+      const body = {
+        name:    document.getElementById('f-name').value,
+        country: document.getElementById('f-country').value
+      };
+      try {
+        id ? await api.put('/cities/' + id, body) : await api.post('/cities', body);
+        closeModal(); load();
+      } catch (err) {
+        document.getElementById('modal-alert').innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+      }
+    });
+
+    async function del(id) {
+      if (!confirm('Видалити це місто?')) return;
+      try { await api.delete('/cities/' + id); load(); }
+      catch (err) {
+        document.getElementById('alert').innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>

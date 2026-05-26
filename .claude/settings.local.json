@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell($r = Invoke-RestMethod -Uri \"http://localhost:5000/api/tours?isHot=true\" -Method Get; Write-Host \"Hot tours: $\\($r.Count\\)\"; $r | Select-Object title, price | Format-Table)"
+    ]
+  }
+}

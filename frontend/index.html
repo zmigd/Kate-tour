@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TourAgency — Гарячі тури по всьому світу</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar" id="main-nav"></nav>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-inner">
+      <div class="hero-tag">🔥 Гарячі тури 2026</div>
+      <h1>Подорожуй по всьому<br><span>світу з нами</span></h1>
+      <p>Найкращі тури до 7 країн за найвигіднішими цінами.<br>Бронюй онлайн — без черг та зайвих документів.</p>
+      <div class="hero-search">
+        <input type="text" id="search-q" placeholder="🔍  Куди хочете поїхати?" />
+        <button onclick="goSearch()">Знайти тур</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Stats -->
+  <div class="stats-bar">
+    <div class="stats-bar-inner">
+      <div class="stat-item">
+        <div class="num">7</div>
+        <div class="lbl">🌍 Країн</div>
+      </div>
+      <div class="stat-item">
+        <div class="num">7</div>
+        <div class="lbl">✈️ Напрямків</div>
+      </div>
+      <div class="stat-item">
+        <div class="num">5★</div>
+        <div class="lbl">🏨 Готелі</div>
+      </div>
+      <div class="stat-item">
+        <div class="num">100%</div>
+        <div class="lbl">✅ Гарантія</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hot Tours -->
+  <section class="section" style="background:var(--bg)">
+    <div class="section-inner">
+      <div class="section-hdr">
+        <div>
+          <div class="section-title">🔥 <span>Гарячі</span> тури</div>
+          <div class="section-sub">Обмежені місця — бронюй вже сьогодні</div>
+        </div>
+        <a href="/pages/tours.html" class="btn btn-ghost">Всі тури →</a>
+      </div>
+      <div class="tours-grid" id="hot-grid"></div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="section" style="background:#fff;border-top:1px solid var(--border)">
+    <div class="section-inner">
+      <div class="section-hdr">
+        <div>
+          <div class="section-title">Чому обирають <span>нас</span></div>
+          <div class="section-sub">Ми дбаємо про кожного клієнта</div>
+        </div>
+      </div>
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="icon">🔒</div>
+          <h3>Безпечне бронювання</h3>
+          <p>Всі платежі захищені. Ваші дані в безпеці.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">💰</div>
+          <h3>Найкращі ціни</h3>
+          <p>Гарантуємо найнижчу ціну або повернемо різницю.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">🎧</div>
+          <h3>Підтримка 24/7</h3>
+          <p>Наші менеджери готові допомогти будь-коли.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">✈️</div>
+          <h3>Перевірені тури</h3>
+          <p>Кожен тур перевірений та схвалений нашими експертами.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-logo">✈ TourAgency</div>
+      <div class="footer-copy">© 2025 TourAgency. Всі права захищено.</div>
+      <div class="footer-links">
+        <a href="/pages/tours.html">Тури</a>
+        <a href="/pages/login.html">Вхід</a>
+        <a href="/pages/register.html">Реєстрація</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/nav.js"></script>
+  <script src="/js/tours.js"></script>
+  <script>
+    document.getElementById('search-q').addEventListener('keydown', e => {
+      if (e.key === 'Enter') goSearch();
+    });
+    function goSearch() {
+      const q = document.getElementById('search-q').value.trim();
+      window.location.href = '/pages/tours.html' + (q ? '?search=' + encodeURIComponent(q) : '');
+    }
+    loadHotTours('hot-grid');
+  </script>
+</body>
+</html>

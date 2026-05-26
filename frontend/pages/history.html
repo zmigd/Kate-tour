@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Мої бронювання — TourAgency</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <nav class="navbar" id="main-nav"></nav>
+
+  <div class="history-wrap">
+    <h2>Мої бронювання</h2>
+    <div id="alert"></div>
+    <div class="tbl-wrap" id="tbl-wrap">
+      <div class="loading">Завантаження...</div>
+    </div>
+  </div>
+
+  <footer class="footer"><p>© 2025 TourAgency</p></footer>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/nav.js"></script>
+  <script>
+    const BADGE = {
+      pending:   '<span class="badge badge-pending">Очікує</span>',
+      confirmed: '<span class="badge badge-confirmed">Підтверджено</span>',
+      cancelled: '<span class="badge badge-cancelled">Скасовано</span>'
+    };
+
+    function fmt(d) {
+      return d ? new Date(d).toLocaleDateString('uk-UA') : '—';
+    }
+
+    async function load() {
+      if (!localStorage.getItem('token')) {
+        window.location.href = '/pages/login.html';
+        return;
+      }
+      const wrap = document.getElementById('tbl-wrap');
+      try {
+        const list = await api.get('/bookings/my');
+        if (!list.length) {
+          wrap.innerHTML = `
+            <div class="empty">
+              <div class="ico">📋</div>
+              <p>У вас ще немає бронювань.<br>
+                <a href="/pages/tours.html" style="color:var(--primary)">Переглянути тури →</a>
+              </p>
+            </div>`;
+          return;
+        }
+        wrap.innerHTML = `
+          <table>
+            <thead>
+              <tr>
+                <th>Тур</th>
+                <th>Початок</th>
+                <th>Осіб</th>
+                <th>Сума</th>
+                <th>Дата заявки</th>
+                <th>Статус</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${list.map(b => `
+                <tr>
+                  <td>
+                    <a href="/pages/tour-detail.html?id=${b.tour?._id}"
+                       style="color:var(--primary);font-weight:500">
+                      ${b.tour?.title || '—'}
+                    </a>
+                  </td>
+                  <td>${fmt(b.tour?.startDate)}</td>
+                  <td>${b.persons}</td>
+                  <td>${Number(b.totalPrice).toLocaleString('uk-UA')} грн</td>
+                  <td>${fmt(b.createdAt)}</td>
+                  <td>${BADGE[b.status] || b.status}</td>
+                </tr>`).join('')}
+            </tbody>
+          </table>`;
+      } catch (err) {
+        document.getElementById('alert').innerHTML =
+          `<div class="alert alert-error">${err.message}</div>`;
+        wrap.innerHTML = '';
+      }
+    }
+    load();
+  </script>
+</body>
+</html>

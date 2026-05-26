@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Послуги — TourAgency</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <nav class="navbar" id="main-nav"></nav>
+
+  <div class="mgr-layout">
+    <nav class="mgr-sidebar" id="mgr-sidebar"></nav>
+
+    <main class="mgr-content">
+      <div class="mgr-toolbar">
+        <h2>Послуги</h2>
+        <button class="btn btn-success" onclick="openModal()">+ Додати</button>
+      </div>
+      <div id="alert"></div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Назва</th><th>Опис</th><th>Дії</th></tr></thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal -->
+  <div class="modal-overlay" id="modal">
+    <div class="modal">
+      <div class="modal-hdr">
+        <h3 id="modal-title">Нова послуга</h3>
+        <button class="modal-close" onclick="closeModal()">×</button>
+      </div>
+      <div id="modal-alert"></div>
+      <form id="frm">
+        <input type="hidden" id="f-id">
+        <div class="form-group">
+          <label>Назва *</label>
+          <input id="f-name" required placeholder="Трансфер з аеропорту">
+        </div>
+        <div class="form-group">
+          <label>Опис</label>
+          <textarea id="f-desc" rows="2" placeholder="Необов'язково"></textarea>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-success">Зберегти</button>
+          <button type="button" class="btn btn-ghost" onclick="closeModal()">Скасувати</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/nav.js"></script>
+  <script src="/js/manager.js"></script>
+  <script>
+    checkManager();
+    renderSidebar('services');
+
+    async function load() {
+      const tbody = document.getElementById('tbody');
+      try {
+        const list = await api.get('/services');
+        tbody.innerHTML = list.length
+          ? list.map(s => `
+              <tr>
+                <td><strong>${s.name}</strong></td>
+                <td style="color:var(--muted);font-size:.85rem">${s.description || '—'}</td>
+                <td><div class="tbl-actions">
+                  <button class="btn btn-ghost btn-sm" onclick='edit(${JSON.stringify(s)})'>✏️</button>
+                  <button class="btn btn-danger btn-sm" onclick="del('${s._id}')">🗑</button>
+                </div></td>
+              </tr>`).join('')
+          : '<tr><td colspan="3"><div class="empty"><p>Послуг ще немає</p></div></td></tr>';
+      } catch (err) {
+        document.getElementById('alert').innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+      }
+    }
+
+    function openModal(s) {
+      document.getElementById('modal-title').textContent = s ? 'Редагувати послугу' : 'Нова послуга';
+      document.getElementById('f-id').value   = s?._id         || '';
+      document.getElementById('f-name').value = s?.name        || '';
+      document.getElementById('f-desc').value = s?.description || '';
+      document.getElementById('modal-alert').innerHTML = '';
+      document.getElementById('modal').classList.add('open');
+    }
+    function edit(s)    { openModal(s); }
+    function closeModal() { document.getElementById('modal').classList.remove('open'); }
+
+    document.getElementById('frm').addEventListener('submit', async e => {
+      e.preventDefault();
+      const id = document.getElementById('f-id').value;
+      const body = {
+        name:        document.getElementById('f-name').value,
+        description: document.getElementById('f-desc').value || undefined
+      };
+      try {
+        id ? await api.put('/services/' + id, body) : await api.post('/services', body);
+        closeModal(); load();
+      } catch (err) {
+        document.getElementById('modal-alert').innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+      }
+    });
+
+    async function del(id) {
+      if (!confirm('Видалити цю послугу?')) return;
+      try { await api.delete('/services/' + id); load(); }
+      catch (err) {
+        document.getElementById('alert').innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+      }
+    }
+
+    load();
+  </script>
+</body>
+</html>

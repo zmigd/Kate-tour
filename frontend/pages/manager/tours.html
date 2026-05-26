@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Тури — TourAgency</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <nav class="navbar" id="main-nav"></nav>
+
+  <div class="mgr-layout">
+    <nav class="mgr-sidebar" id="mgr-sidebar"></nav>
+
+    <main class="mgr-content">
+      <div class="mgr-toolbar">
+        <h2>✈️ Управління турами</h2>
+        <button class="btn btn-success" onclick="openModal()">+ Додати тур</button>
+      </div>
+      <div id="alert"></div>
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Фото</th><th>Назва</th><th>Країна</th>
+              <th>Ціна</th><th>Місць</th><th>Дати</th><th>HOT</th><th>Дії</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+
+  <!-- ══════════ MODAL ══════════ -->
+  <div class="modal-overlay" id="modal">
+    <div class="modal">
+      <div class="modal-hdr">
+        <h3 id="modal-title">Новий тур</h3>
+        <button class="modal-close" onclick="closeModal()">×</button>
+      </div>
+      <div id="modal-alert"></div>
+
+      <form id="tour-form">
+        <input type="hidden" id="f-id">
+
+        <!-- Назва + Опис -->
+        <div class="form-group">
+          <label>Назва *</label>
+          <input id="f-title" required placeholder="Вічна Італія">
+        </div>
+        <div class="form-group">
+          <label>Опис</label>
+          <textarea id="f-desc" rows="2" placeholder="Короткий опис туру..."></textarea>
+        </div>
+
+        <!-- Країна + Місто -->
+        <div class="form-row">
+          <div class="form-group">
+            <label>Країна *</label>
+            <select id="f-country" required>
+              <option value="">Оберіть країну</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Місто</label>
+            <select id="f-city">
+              <option value="">— без міста —</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Готель -->
+        <div class="form-group">
+          <label>Готель</label>
+          <select id="f-hotel">
+            <option value="">— без готелю —</option>
+          </select>
+        </div>
+
+        <!-- Ціна + Тривалість -->
+        <div class="form-row">
+          <div class="form-group">
+            <label>Ціна (грн) *</label>
+            <input type="number" id="f-price" min="0" required placeholder="55000">
+          </div>
+          <div class="form-group">
+            <label>Тривалість (дні) *</label>
+            <input type="number" id="f-duration" min="1" required placeholder="10">
+          </div>
+        </div>
+
+        <!-- Дати -->
+        <div class="form-row">
+          <div class="form-group">
+            <label>Початок *</label>
+            <input type="date" id="f-start" required>
+          </div>
+          <div class="form-group">
+            <label>Кінець *</label>
+            <input type="date" id="f-end" required>
+          </div>
+        </div>
+
+        <!-- Місць + Гарячий -->
+        <div class="form-row">
+          <div class="form-group">
+            <label>Вільних місць *</label>
+            <input type="number" id="f-seats" min="1" required placeholder="20">
+          </div>
+          <div class="form-group" style="display:flex;align-items:flex-end;padding-bottom:.2rem">
+            <label class="svc-check" style="text-transform:none;letter-spacing:0;font-size:.9rem;font-weight:600">
+              <input type="checkbox" id="f-hot">
+              🔥 Гарячий тур
+            </label>
+          </div>
+        </div>
+
+        <!-- Послуги -->
+        <div class="form-group">
+          <label>Послуги</label>
+          <div class="services-checklist" id="services-list">
+            <div class="loading" style="padding:.5rem">Завантаження...</div>
+          </div>
+        </div>
+
+        <!-- Завантаження фото -->
+        <div class="form-group">
+          <label>Фотографія туру</label>
+          <input type="hidden" id="f-img">
+          <div class="upload-zone" id="upload-zone">
+            <!-- Rendered by JS -->
+          </div>
+          <input type="file" id="file-input" accept="image/*" style="display:none">
+        </div>
+
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-success">💾 Зберегти</button>
+          <button type="button" class="btn btn-ghost" onclick="closeModal()">Скасувати</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/nav.js"></script>
+  <script src="/js/manager.js"></script>
+  <script>
+    checkManager();
+    renderSidebar('tours');
+
+    // ── Data stores ────────────────────────────────────────
+    let countries = [], cities = [], hotels = [], servicesList = [];
+    let toursMap  = {}; // id → tour object (safe alternative to JSON in onclick)
+
+    function fmt(d) {
+      return d ? new Date(d).toLocaleDateString('uk-UA') : '—';
+    }
+
+    // ── Init ───────────────────────────────────────────────
+    async function init() {
+      try {
+        [countries, cities, hotels, servicesList] = await Promise.all([
+          api.get('/countries'),
+          api.get('/cities'),
+          api.get('/hotels'),
+          api.get('/services')
+        ]);
+
+        const cs = document.getElementById('f-country');
+        countries.forEach(c => {
+          const o = document.createElement('option');
+          o.value = c._id; o.textContent = c.name;
+          cs.appendChild(o);
+        });
+        cs.addEventListener('change', () => fillCityHotel());
+        renderUploadZone();
+        loadTours();
+      } catch (err) {
+        document.getElementById('alert').innerHTML =
+          `<div class="alert alert-error">Помилка ініціалізації: ${err.message}</div>`;
+      }
+    }
+
+    // ── City / Hotel dropdowns ─────────────────────────────
+    function fillCityHotel(cityId, hotelId) {
+      const cid  = document.getElementById('f-country').value;
+      const cSel = document.getElementById('f-city');
+      const hSel = document.getElementById('f-hotel');
+      cSel.innerHTML = '<option value="">— без міста —</option>';
+      hSel.innerHTML = '<option value="">— без готелю —</option>';
+      cities
+        .filter(c => (c.country?._id || c.country) === cid)
+        .forEach(c => {
+          const o = document.createElement('option');
+          o.value = c._id; o.textContent = c.name;
+          cSel.appendChild(o);
+          hotels
+            .filter(h => (h.city?._id || h.city) === c._id)
+            .forEach(h => {
+              const oh = document.createElement('option');
+              oh.value = h._id;
+              oh.textContent = h.name + (h.stars ? ' (' + '⭐'.repeat(h.stars) + ')' : '');
+              hSel.appendChild(oh);
+            });
+        });
+      if (cityId)  cSel.value = cityId;
+      if (hotelId) hSel.value = hotelId;
+    }
+
+    // ── Services checklist ─────────────────────────────────
+    function renderServices(selectedIds = []) {
+      const el = document.getElementById('services-list');
+      if (!servicesList.length) {
+        el.innerHTML = '<p style="padding:.5rem;color:var(--muted);font-size:.82rem">Послуг ще немає. Додайте їх у розділі «Послуги».</p>';
+        return;
+      }
+      el.innerHTML = servicesList.map(s => `
+        <label class="svc-check">
+          <input type="checkbox" name="svc" value="${s._id}"
+            ${selectedIds.includes(String(s._id)) ? 'checked' : ''}>
+          ${s.name}
+        </label>`).join('');
+    }
+
+    function getCheckedServices() {
+      return [...document.querySelectorAll('input[name="svc"]:checked')]
+        .map(cb => cb.value);
+    }
+
+    // ── Upload zone ────────────────────────────────────────
+    function renderUploadZone(currentUrl) {
+      const zone = document.getElementById('upload-zone');
+      if (currentUrl) {
+        zone.className = 'upload-zone has-image';
+        zone.innerHTML = `
+          <img src="${currentUrl}" alt="Фото туру">
+          <p>✓ Фото завантажено &nbsp;·&nbsp;
+            <span class="upload-link" onclick="resetUpload()">Змінити</span>
+          </p>`;
+      } else {
+        zone.className = 'upload-zone';
+        zone.innerHTML = `
+          <div class="uz-icon">📷</div>
+          <p>Перетягни фото сюди<br>або
+            <span class="upload-link" id="browse-link">вибери файл з комп'ютера</span>
+          </p>
+          <p style="font-size:.72rem">JPG, PNG, WEBP, GIF — до 10 МБ</p>`;
+
+        // Drag & drop events
+        zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+        zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+        zone.addEventListener('drop', e => {
+          e.preventDefault();
+          zone.classList.remove('drag-over');
+          const file = e.dataTransfer.files[0];
+          if (file) uploadFile(file);
+        });
+
+        // Browse click
+        document.getElementById('browse-link').addEventListener('click', e => {
+          e.stopPropagation();
+          document.getElementById('file-input').click();
+        });
+      }
+    }
+
+    function resetUpload() {
+      document.getElementById('f-img').value = '';
+      document.getElementById('file-input').value = '';
+      renderUploadZone();
+    }
+
+    // File input change
+    document.getElementById('file-input').addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (file) uploadFile(file);
+    });
+
+    async function uploadFile(file) {
+      const zone = document.getElementById('upload-zone');
+      zone.innerHTML = '<div class="loading" style="padding:.5rem">⏳ Завантаження...</div>';
+      zone.className = 'upload-zone';
+
+      const formData = new FormData();
+      formData.append('image', file);
+      const token = localStorage.getItem('token');
+
+      try {
+        const res  = await fetch('/api/upload', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + token },
+          body: formData
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Помилка завантаження');
+
+        document.getElementById('f-img').value = data.imageUrl;
+        renderUploadZone(data.imageUrl);
+      } catch (err) {
+        zone.className = 'upload-zone';
+        zone.innerHTML = `
+          <div class="uz-icon">⚠️</div>
+          <p style="color:var(--red)">${err.message}</p>
+          <span class="upload-link" onclick="resetUpload()">Спробувати знову</span>`;
+      }
+    }
+
+    // ── Load tours table ───────────────────────────────────
+    async function loadTours() {
+      const tbody = document.getElementById('tbody');
+      tbody.innerHTML = '<tr><td colspan="8" class="loading">Завантаження...</td></tr>';
+      try {
+        const list = await api.get('/tours');
+        toursMap = {};
+        list.forEach(t => { toursMap[t._id] = t; });
+
+        tbody.innerHTML = list.length
+          ? list.map(t => `
+              <tr>
+                <td>
+                  ${t.imageUrl
+                    ? `<img src="${t.imageUrl}" style="width:58px;height:42px;object-fit:cover;border-radius:6px;display:block">`
+                    : '<span style="color:var(--muted);font-size:1.2rem">📷</span>'}
+                </td>
+                <td style="font-weight:600;max-width:180px">${t.title}</td>
+                <td>${t.country?.name || '—'}</td>
+                <td>${Number(t.price).toLocaleString('uk-UA')} грн</td>
+                <td>${t.seats}</td>
+                <td style="font-size:.78rem;white-space:nowrap">
+                  ${fmt(t.startDate)}<br>${fmt(t.endDate)}
+                </td>
+                <td>${t.isHot ? '🔥' : '—'}</td>
+                <td>
+                  <div class="tbl-actions">
+                    <button class="btn btn-ghost btn-sm" onclick="editTour('${t._id}')">✏️</button>
+                    <button class="btn btn-danger btn-sm" onclick="delTour('${t._id}')">🗑</button>
+                  </div>
+                </td>
+              </tr>`).join('')
+          : '<tr><td colspan="8"><div class="empty"><p>Турів ще немає. Натисніть «+ Додати тур».</p></div></td></tr>';
+      } catch (err) {
+        document.getElementById('alert').innerHTML =
+          `<div class="alert alert-error">${err.message}</div>`;
+      }
+    }
+
+    // ── Open / Close modal ─────────────────────────────────
+    function openModal(t) {
+      document.getElementById('modal-title').textContent = t ? 'Редагувати тур' : 'Новий тур';
+      document.getElementById('f-id').value       = t?._id         || '';
+      document.getElementById('f-title').value    = t?.title       || '';
+      document.getElementById('f-desc').value     = t?.description || '';
+      document.getElementById('f-price').value    = t?.price       || '';
+      document.getElementById('f-duration').value = t?.duration    || '';
+      document.getElementById('f-start').value    = t?.startDate?.slice(0, 10) || '';
+      document.getElementById('f-end').value      = t?.endDate?.slice(0, 10)   || '';
+      document.getElementById('f-seats').value    = t?.seats       || '';
+      document.getElementById('f-img').value      = t?.imageUrl    || '';
+      document.getElementById('f-hot').checked    = t?.isHot       || false;
+      document.getElementById('modal-alert').innerHTML = '';
+
+      // Services
+      const selectedIds = (t?.services || []).map(s => String(s._id || s));
+      renderServices(selectedIds);
+
+      // Photo
+      renderUploadZone(t?.imageUrl || '');
+
+      // Country/city/hotel
+      if (t?.country?._id) {
+        document.getElementById('f-country').value = t.country._id;
+        fillCityHotel(t.city?._id, t.hotel?._id);
+      } else {
+        document.getElementById('f-country').value = '';
+        fillCityHotel();
+      }
+
+      document.getElementById('modal').classList.add('open');
+    }
+
+    function editTour(id) { openModal(toursMap[id]); }
+
+    function closeModal() {
+      document.getElementById('modal').classList.remove('open');
+      document.getElementById('modal-alert').innerHTML = '';
+      document.getElementById('file-input').value = '';
+    }
+
+    // ── Submit form ────────────────────────────────────────
+    document.getElementById('tour-form').addEventListener('submit', async e => {
+      e.preventDefault();
+      const id = document.getElementById('f-id').value;
+      const body = {
+        title:       document.getElementById('f-title').value,
+        description: document.getElementById('f-desc').value     || undefined,
+        country:     document.getElementById('f-country').value,
+        city:        document.getElementById('f-city').value      || undefined,
+        hotel:       document.getElementById('f-hotel').value     || undefined,
+        price:    +  document.getElementById('f-price').value,
+        duration: +  document.getElementById('f-duration').value,
+        startDate:   document.getElementById('f-start').value,
+        endDate:     document.getElementById('f-end').value,
+        seats:    +  document.getElementById('f-seats').value,
+        imageUrl:    document.getElementById('f-img').value       || undefined,
+        isHot:       document.getElementById('f-hot').checked,
+        services:    getCheckedServices()
+      };
+
+      if (!body.country) {
+        document.getElementById('modal-alert').innerHTML =
+          '<div class="alert alert-error">Оберіть країну</div>';
+        return;
+      }
+
+      try {
+        id ? await api.put('/tours/' + id, body) : await api.post('/tours', body);
+        closeModal();
+        loadTours();
+        document.getElementById('alert').innerHTML =
+          `<div class="alert alert-success">✅ Тур ${id ? 'оновлено' : 'додано'} успішно</div>`;
+        setTimeout(() => document.getElementById('alert').innerHTML = '', 3000);
+      } catch (err) {
+        document.getElementById('modal-alert').innerHTML =
+          `<div class="alert alert-error">${err.message}</div>`;
+      }
+    });
+
+    // ── Delete tour ────────────────────────────────────────
+    async function delTour(id) {
+      if (!confirm('Видалити цей тур? Цю дію не можна скасувати.')) return;
+      try {
+        await api.delete('/tours/' + id);
+        loadTours();
+        document.getElementById('alert').innerHTML =
+          '<div class="alert alert-success">🗑 Тур видалено</div>';
+        setTimeout(() => document.getElementById('alert').innerHTML = '', 2500);
+      } catch (err) {
+        document.getElementById('alert').innerHTML =
+          `<div class="alert alert-error">${err.message}</div>`;
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>

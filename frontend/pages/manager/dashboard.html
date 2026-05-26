@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Огляд — TourAgency</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <nav class="navbar" id="main-nav"></nav>
+
+  <div class="mgr-layout">
+    <nav class="mgr-sidebar" id="mgr-sidebar"></nav>
+
+    <main class="mgr-content">
+      <h2>📊 Огляд</h2>
+
+      <div class="stats-grid" id="stats">
+        <div class="loading">Завантаження...</div>
+      </div>
+
+      <h3 style="font-size:1rem;font-weight:700;margin-bottom:1rem">Останні заявки</h3>
+      <div class="tbl-wrap" id="recent-tbl">
+        <div class="loading">Завантаження...</div>
+      </div>
+    </main>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/nav.js"></script>
+  <script src="/js/manager.js"></script>
+  <script>
+    checkManager();
+    renderSidebar('dashboard');
+
+    const BADGE = {
+      pending:   '<span class="badge badge-pending">Очікує</span>',
+      confirmed: '<span class="badge badge-confirmed">Підтверджено</span>',
+      cancelled: '<span class="badge badge-cancelled">Скасовано</span>'
+    };
+
+    async function load() {
+      try {
+        const [tours, bookings] = await Promise.all([api.get('/tours'), api.get('/bookings')]);
+        const hot      = tours.filter(t => t.isHot).length;
+        const pending  = bookings.filter(b => b.status === 'pending').length;
+        const confirmed= bookings.filter(b => b.status === 'confirmed').length;
+        const revenue  = bookings.filter(b => b.status === 'confirmed').reduce((s,b) => s + b.totalPrice, 0);
+
+        document.getElementById('stats').innerHTML = `
+          <div class="stat-card"><div class="num">${tours.length}</div><div class="lbl">✈️ Всього турів</div></div>
+          <div class="stat-card"><div class="num">${hot}</div><div class="lbl">🔥 Гарячих турів</div></div>
+          <div class="stat-card"><div class="num">${bookings.length}</div><div class="lbl">📋 Бронювань</div></div>
+          <div class="stat-card"><div class="num">${pending}</div><div class="lbl">⏳ Очікують</div></div>
+          <div class="stat-card"><div class="num">${confirmed}</div><div class="lbl">✅ Підтверджені</div></div>
+          <div class="stat-card"><div class="num">${revenue.toLocaleString('uk-UA')} грн</div><div class="lbl">💰 Виручка</div></div>`;
+
+        const recent = bookings.slice(0, 10);
+        document.getElementById('recent-tbl').innerHTML = recent.length
+          ? `<table>
+              <thead>
+                <tr><th>Клієнт</th><th>Тур</th><th>Осіб</th><th>Сума</th><th>Статус</th></tr>
+              </thead>
+              <tbody>
+                ${recent.map(b => `
+                  <tr>
+                    <td><strong>${b.user?.name||'—'}</strong><br><small style="color:var(--muted)">${b.user?.email||''}</small></td>
+                    <td>${b.tour?.title||'—'}</td>
+                    <td>${b.persons}</td>
+                    <td>${Number(b.totalPrice).toLocaleString('uk-UA')} грн</td>
+                    <td>${BADGE[b.status]||b.status}</td>
+                  </tr>`).join('')}
+              </tbody>
+            </table>`
+          : '<div class="empty"><p>Бронювань ще немає</p></div>';
+
+      } catch (err) {
+        document.getElementById('stats').innerHTML =
+          `<div class="alert alert-error">${err.message}</div>`;
+      }
+    }
+    load();
+  </script>
+</body>
+</html>

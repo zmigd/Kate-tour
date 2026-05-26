@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Всі тури — TourAgency</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <nav class="navbar" id="main-nav"></nav>
+
+  <!-- Filters -->
+  <div class="filter-bar">
+    <div class="filter-bar-inner">
+      <input type="text"   id="f-search"  placeholder="🔍 Пошук за назвою..." />
+      <select id="f-country"><option value="">Всі країни</option></select>
+      <input type="number" id="f-min"     placeholder="Ціна від" min="0" />
+      <input type="number" id="f-max"     placeholder="Ціна до"  min="0" />
+      <input type="date"   id="f-date" />
+      <label class="filter-check">
+        <input type="checkbox" id="f-hot"> 🔥 Тільки гарячі
+      </label>
+      <button class="btn btn-primary btn-sm" onclick="applyFilters()">Застосувати</button>
+      <button class="btn btn-ghost btn-sm"   onclick="resetFilters()">Скинути</button>
+    </div>
+  </div>
+
+  <!-- Tours -->
+  <section class="section">
+    <div class="section-inner">
+      <div class="section-hdr">
+        <div>
+          <div class="section-title" id="results-title">Всі тури</div>
+          <div class="section-sub" id="results-sub"></div>
+        </div>
+      </div>
+      <div class="tours-grid" id="tours-grid"></div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-logo">✈ TourAgency</div>
+      <div class="footer-copy">© 2025 TourAgency. Всі права захищено.</div>
+    </div>
+  </footer>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/nav.js"></script>
+  <script src="/js/tours.js"></script>
+  <script>
+    async function fillCountries() {
+      try {
+        const list = await api.get('/countries');
+        const sel = document.getElementById('f-country');
+        list.forEach(c => {
+          const o = document.createElement('option');
+          o.value = c._id; o.textContent = c.name;
+          sel.appendChild(o);
+        });
+      } catch {}
+    }
+
+    async function applyFilters() {
+      const params = new URLSearchParams();
+      const s  = document.getElementById('f-search').value.trim();
+      const c  = document.getElementById('f-country').value;
+      const mn = document.getElementById('f-min').value;
+      const mx = document.getElementById('f-max').value;
+      const d  = document.getElementById('f-date').value;
+      const h  = document.getElementById('f-hot').checked;
+      if (s)  params.set('search',    s);
+      if (c)  params.set('country',   c);
+      if (mn) params.set('minPrice',  mn);
+      if (mx) params.set('maxPrice',  mx);
+      if (d)  params.set('startDate', d);
+      if (h)  params.set('isHot',     'true');
+      history.replaceState({}, '', '/pages/tours.html?' + params.toString());
+
+      const grid = document.getElementById('tours-grid');
+      grid.innerHTML = '<div class="loading">Завантаження...</div>';
+      try {
+        const list = await api.get('/tours?' + params.toString());
+        document.getElementById('results-title').textContent = h ? '🔥 Гарячі тури' : 'Всі тури';
+        document.getElementById('results-sub').textContent   = `Знайдено: ${list.length} турів`;
+        grid.innerHTML = list.length
+          ? list.map(tourCard).join('')
+          : `<div class="empty"><div class="ico">🔍</div><p>Нічого не знайдено. Спробуйте змінити фільтри.</p></div>`;
+      } catch (err) {
+        grid.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+      }
+    }
+
+    function resetFilters() {
+      ['f-search','f-min','f-max','f-date'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('f-country').value = '';
+      document.getElementById('f-hot').checked = false;
+      applyFilters();
+    }
+
+    // Init from URL
+    const qp = new URLSearchParams(location.search);
+    if (qp.get('search'))  document.getElementById('f-search').value  = qp.get('search');
+    if (qp.get('country')) document.getElementById('f-country').value = qp.get('country');
+    if (qp.get('isHot') === 'true') document.getElementById('f-hot').checked = true;
+
+    fillCountries().then(applyFilters);
+  </script>
+</body>
+</html>
