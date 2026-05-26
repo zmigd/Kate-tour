@@ -79,19 +79,13 @@
           </select>
         </div>
 
-        <!-- Ціна + Тривалість -->
-        <div class="form-row">
-          <div class="form-group">
-            <label>Ціна (грн) *</label>
-            <input type="number" id="f-price" min="0" required placeholder="55000">
-          </div>
-          <div class="form-group">
-            <label>Тривалість (дні) *</label>
-            <input type="number" id="f-duration" min="1" required placeholder="10">
-          </div>
+        <!-- Ціна -->
+        <div class="form-group">
+          <label>Ціна (грн) *</label>
+          <input type="number" id="f-price" min="0" required placeholder="55000">
         </div>
 
-        <!-- Дати -->
+        <!-- Дати + авто-тривалість -->
         <div class="form-row">
           <div class="form-group">
             <label>Початок *</label>
@@ -100,6 +94,11 @@
           <div class="form-group">
             <label>Кінець *</label>
             <input type="date" id="f-end" required>
+          </div>
+          <div class="form-group" style="min-width:100px;max-width:120px">
+            <label>Тривалість</label>
+            <input type="text" id="f-duration-display" readonly placeholder="—"
+              style="background:var(--bg);color:var(--blue);font-weight:700;text-align:center;cursor:default">
           </div>
         </div>
 
@@ -229,6 +228,29 @@
         .map(cb => cb.value);
     }
 
+    // ── Auto-calculate duration ────────────────────────────
+    function calcDuration() {
+      const s = document.getElementById('f-start').value;
+      const e = document.getElementById('f-end').value;
+      const display = document.getElementById('f-duration-display');
+      if (s && e && e >= s) {
+        const days = Math.round((new Date(e) - new Date(s)) / 86400000) + 1;
+        display.value = days + ' ' + pluralDays(days);
+        return days;
+      }
+      display.value = '—';
+      return 0;
+    }
+
+    function pluralDays(n) {
+      if (n % 10 === 1 && n % 100 !== 11) return 'день';
+      if ([2,3,4].includes(n % 10) && ![12,13,14].includes(n % 100)) return 'дні';
+      return 'днів';
+    }
+
+    document.getElementById('f-start').addEventListener('change', calcDuration);
+    document.getElementById('f-end').addEventListener('change', calcDuration);
+
     // ── Upload zone ────────────────────────────────────────
     function renderUploadZone(currentUrl) {
       const zone = document.getElementById('upload-zone');
@@ -353,13 +375,13 @@
       document.getElementById('f-title').value    = t?.title       || '';
       document.getElementById('f-desc').value     = t?.description || '';
       document.getElementById('f-price').value    = t?.price       || '';
-      document.getElementById('f-duration').value = t?.duration    || '';
       document.getElementById('f-start').value    = t?.startDate?.slice(0, 10) || '';
       document.getElementById('f-end').value      = t?.endDate?.slice(0, 10)   || '';
       document.getElementById('f-seats').value    = t?.seats       || '';
       document.getElementById('f-img').value      = t?.imageUrl    || '';
       document.getElementById('f-hot').checked    = t?.isHot       || false;
       document.getElementById('modal-alert').innerHTML = '';
+      calcDuration();
 
       // Services
       const selectedIds = (t?.services || []).map(s => String(s._id || s));
@@ -392,6 +414,16 @@
     document.getElementById('tour-form').addEventListener('submit', async e => {
       e.preventDefault();
       const id = document.getElementById('f-id').value;
+      const startDate = document.getElementById('f-start').value;
+      const endDate   = document.getElementById('f-end').value;
+      const duration  = calcDuration();
+
+      if (endDate && startDate && endDate < startDate) {
+        document.getElementById('modal-alert').innerHTML =
+          '<div class="alert alert-error">Дата кінця не може бути раніше дати початку</div>';
+        return;
+      }
+
       const body = {
         title:       document.getElementById('f-title').value,
         description: document.getElementById('f-desc').value     || undefined,
@@ -399,9 +431,9 @@
         city:        document.getElementById('f-city').value      || undefined,
         hotel:       document.getElementById('f-hotel').value     || undefined,
         price:    +  document.getElementById('f-price').value,
-        duration: +  document.getElementById('f-duration').value,
-        startDate:   document.getElementById('f-start').value,
-        endDate:     document.getElementById('f-end').value,
+        duration,
+        startDate,
+        endDate,
         seats:    +  document.getElementById('f-seats').value,
         imageUrl:    document.getElementById('f-img').value       || undefined,
         isHot:       document.getElementById('f-hot').checked,
