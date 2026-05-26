@@ -46,40 +46,44 @@
             <div class="empty">
               <div class="ico">📋</div>
               <p>У вас ще немає бронювань.<br>
-                <a href="/pages/tours.html" style="color:var(--primary)">Переглянути тури →</a>
+                <a href="/pages/tours.html" style="color:var(--blue)">Переглянути тури →</a>
               </p>
             </div>`;
           return;
         }
         wrap.innerHTML = `
-          <table>
-            <thead>
-              <tr>
-                <th>Тур</th>
-                <th>Початок</th>
-                <th>Осіб</th>
-                <th>Сума</th>
-                <th>Дата заявки</th>
-                <th>Статус</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${list.map(b => `
+          <div class="tbl-scroll">
+            <table>
+              <thead>
                 <tr>
-                  <td>
-                    <a href="/pages/tour-detail.html?id=${b.tour?._id}"
-                       style="color:var(--primary);font-weight:500">
-                      ${b.tour?.title || '—'}
-                    </a>
-                  </td>
-                  <td>${fmt(b.tour?.startDate)}</td>
-                  <td>${b.persons}</td>
-                  <td>${Number(b.totalPrice).toLocaleString('uk-UA')} грн</td>
-                  <td>${fmt(b.createdAt)}</td>
-                  <td>${BADGE[b.status] || b.status}</td>
-                </tr>`).join('')}
-            </tbody>
-          </table>`;
+                  <th>Тур</th>
+                  <th>Початок</th>
+                  <th>Кінець</th>
+                  <th>Осіб</th>
+                  <th>Сума</th>
+                  <th>Дата заявки</th>
+                  <th>Статус</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${list.map(b => `
+                  <tr>
+                    <td style="min-width:160px">
+                      <a href="/pages/tour-detail.html?id=${b.tour?._id}"
+                         style="color:var(--blue);font-weight:600">
+                        ${b.tour?.title || '—'}
+                      </a>
+                    </td>
+                    <td style="white-space:nowrap">${fmt(b.tour?.startDate)}</td>
+                    <td style="white-space:nowrap">${fmt(b.tour?.endDate)}</td>
+                    <td>${b.persons}</td>
+                    <td style="white-space:nowrap;font-weight:600">${Number(b.totalPrice).toLocaleString('uk-UA')} грн</td>
+                    <td style="white-space:nowrap">${fmt(b.createdAt)}</td>
+                    <td>${BADGE[b.status] || b.status}</td>
+                  </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>`;
       } catch (err) {
         document.getElementById('alert').innerHTML =
           `<div class="alert alert-error">${err.message}</div>`;

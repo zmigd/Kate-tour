@@ -670,8 +670,17 @@ button, input, select, textarea { font-family: inherit; }
   overflow: hidden;
   border: 1px solid var(--border);
 }
-.tbl-wrap table { width: 100%; border-collapse: collapse; }
-.tbl-wrap th {
+/* Scroll container inside tbl-wrap — handles horizontal scroll
+   without fighting the overflow:hidden that clips border-radius */
+.tbl-scroll {
+  overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
+}
+.tbl-wrap table,
+.tbl-scroll table { width: 100%; border-collapse: collapse; }
+.tbl-wrap th,
+.tbl-scroll th {
   background: #F9FAFB;
   border-bottom: 1.5px solid var(--border);
   padding: .75rem 1rem;
@@ -681,15 +690,19 @@ button, input, select, textarea { font-family: inherit; }
   color: var(--muted);
   text-transform: uppercase;
   letter-spacing: .7px;
+  white-space: nowrap;
 }
-.tbl-wrap td {
+.tbl-wrap td,
+.tbl-scroll td {
   padding: .8rem 1rem;
   border-bottom: 1px solid var(--border);
   font-size: .875rem;
   vertical-align: middle;
 }
-.tbl-wrap tr:last-child td { border-bottom: none; }
-.tbl-wrap tr:hover td { background: #FAFAFA; }
+.tbl-wrap tr:last-child td,
+.tbl-scroll tr:last-child td { border-bottom: none; }
+.tbl-wrap tr:hover td,
+.tbl-scroll tr:hover td { background: #FAFAFA; }
 .tbl-actions { display: flex; gap: .4rem; align-items: center; }
 
 /* ═══════════════════════════════════════════════════════
@@ -1114,7 +1127,8 @@ button, input, select, textarea { font-family: inherit; }
 
   /* Tables → horizontal scroll */
   .tbl-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .tbl-wrap table { min-width: 600px; }
+  .tbl-wrap > table { min-width: 600px; }
+  .tbl-scroll table { min-width: 560px; }
 
   /* Info grid → 2 col */
   .info-grid { grid-template-columns: repeat(2, 1fr); }
