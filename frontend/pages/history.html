@@ -5,6 +5,130 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Мої бронювання — TourAgency</title>
   <link rel="stylesheet" href="/css/style.css">
+  <style>
+    /* ── Desktop table ──────────────────────────────── */
+    .history-table { display: block; }
+    .history-cards { display: none; }
+
+    /* ── Mobile cards ───────────────────────────────── */
+    @media (max-width: 768px) {
+      .history-table { display: none; }
+      .history-cards { display: flex; flex-direction: column; gap: .75rem; }
+    }
+
+    .booking-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 1rem 1.1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: .75rem;
+      cursor: pointer;
+      transition: box-shadow .15s, transform .15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .booking-card:active { transform: scale(.98); }
+    .booking-card:hover  { box-shadow: var(--shadow-md); }
+
+    .bc-left { flex: 1; min-width: 0; }
+    .bc-title {
+      font-weight: 700;
+      font-size: .95rem;
+      color: var(--blue);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .bc-date {
+      font-size: .8rem;
+      color: var(--muted);
+      margin-top: .15rem;
+    }
+    .bc-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: .3rem;
+      flex-shrink: 0;
+    }
+    .bc-arrow {
+      font-size: 1rem;
+      color: var(--muted);
+      margin-top: .2rem;
+    }
+
+    /* ── Booking popup ──────────────────────────────── */
+    .booking-popup-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.45);
+      z-index: 300;
+      align-items: flex-end;
+      justify-content: center;
+    }
+    .booking-popup-overlay.open { display: flex; }
+
+    .booking-popup {
+      background: var(--surface);
+      border-radius: var(--radius) var(--radius) 0 0;
+      width: 100%;
+      max-width: 520px;
+      padding: 1.5rem 1.4rem 2rem;
+      animation: slideUp .25s ease;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    @keyframes slideUp {
+      from { transform: translateY(100%); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
+
+    .popup-handle {
+      width: 40px; height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      margin: 0 auto 1.2rem;
+    }
+    .popup-title {
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: var(--text);
+      margin-bottom: 1rem;
+      letter-spacing: -.3px;
+    }
+    .popup-rows { display: flex; flex-direction: column; gap: 0; }
+    .popup-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: .7rem 0;
+      border-bottom: 1px solid var(--bg);
+      font-size: .9rem;
+    }
+    .popup-row:last-child { border-bottom: none; }
+    .popup-row .lbl { color: var(--muted); font-weight: 500; }
+    .popup-row .val { font-weight: 600; color: var(--text); text-align: right; }
+    .popup-row .val.price { color: var(--blue); font-size: 1rem; }
+
+    .popup-close-btn {
+      margin-top: 1.2rem;
+      width: 100%;
+      padding: .75rem;
+      background: var(--bg);
+      border: none;
+      border-radius: var(--radius-sm);
+      font-size: .9rem;
+      font-weight: 600;
+      color: var(--text-2);
+      cursor: pointer;
+      transition: background .15s;
+    }
+    .popup-close-btn:hover { background: var(--border); }
+  </style>
 </head>
 <body>
 
@@ -13,12 +137,27 @@
   <div class="history-wrap">
     <h2>Мої бронювання</h2>
     <div id="alert"></div>
-    <div id="tbl-wrap">
+
+    <!-- Desktop: повна таблиця -->
+    <div class="history-table tbl-card" id="tbl-desktop">
       <div class="loading">Завантаження...</div>
     </div>
+
+    <!-- Mobile: картки -->
+    <div class="history-cards" id="tbl-mobile"></div>
   </div>
 
   <footer class="footer"><p>© 2025 TourAgency</p></footer>
+
+  <!-- Попап з повною інформацією (мобільний) -->
+  <div class="booking-popup-overlay" id="popup-overlay" onclick="closePopup(event)">
+    <div class="booking-popup" id="popup">
+      <div class="popup-handle"></div>
+      <div class="popup-title" id="popup-title"></div>
+      <div class="popup-rows" id="popup-rows"></div>
+      <button class="popup-close-btn" onclick="closePopup()">Закрити</button>
+    </div>
+  </div>
 
   <script src="/js/api.js"></script>
   <script src="/js/nav.js"></script>
@@ -28,70 +167,149 @@
       confirmed: '<span class="badge badge-confirmed">Підтверджено</span>',
       cancelled: '<span class="badge badge-cancelled">Скасовано</span>'
     };
+    const BADGE_TEXT = {
+      pending:   'Очікує',
+      confirmed: 'Підтверджено',
+      cancelled: 'Скасовано'
+    };
 
     function fmt(d) {
       return d ? new Date(d).toLocaleDateString('uk-UA') : '—';
     }
+
+    let bookingsList = [];
 
     async function load() {
       if (!localStorage.getItem('token')) {
         window.location.href = '/pages/login.html';
         return;
       }
-      const wrap = document.getElementById('tbl-wrap');
       try {
-        const list = await api.get('/bookings/my');
-        if (!list.length) {
-          wrap.innerHTML = `
+        bookingsList = await api.get('/bookings/my');
+
+        if (!bookingsList.length) {
+          const empty = `
             <div class="empty">
               <div class="ico">📋</div>
               <p>У вас ще немає бронювань.<br>
                 <a href="/pages/tours.html" style="color:var(--blue)">Переглянути тури →</a>
               </p>
             </div>`;
+          document.getElementById('tbl-desktop').innerHTML = empty;
+          document.getElementById('tbl-mobile').innerHTML  = empty;
           return;
         }
-        wrap.innerHTML = `
-          <div class="tbl-card">
-          <div class="tbl-scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th>Тур</th>
-                  <th>Початок</th>
-                  <th>Кінець</th>
-                  <th>Осіб</th>
-                  <th>Сума</th>
-                  <th>Дата заявки</th>
-                  <th>Статус</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${list.map(b => `
-                  <tr>
-                    <td style="min-width:160px">
-                      <a href="/pages/tour-detail.html?id=${b.tour?._id}"
-                         style="color:var(--blue);font-weight:600">
-                        ${b.tour?.title || '—'}
-                      </a>
-                    </td>
-                    <td style="white-space:nowrap">${fmt(b.tour?.startDate)}</td>
-                    <td style="white-space:nowrap">${fmt(b.tour?.endDate)}</td>
-                    <td>${b.persons}</td>
-                    <td style="white-space:nowrap;font-weight:600">${Number(b.totalPrice).toLocaleString('uk-UA')} грн</td>
-                    <td style="white-space:nowrap">${fmt(b.createdAt)}</td>
-                    <td>${BADGE[b.status] || b.status}</td>
-                  </tr>`).join('')}
-              </tbody>
-            </table>
-          </div>
-          </div>`;
+
+        renderDesktop();
+        renderMobile();
       } catch (err) {
         document.getElementById('alert').innerHTML =
           `<div class="alert alert-error">${err.message}</div>`;
-        wrap.innerHTML = '';
       }
     }
+
+    /* ── Десктопна таблиця ──────────────────────────── */
+    function renderDesktop() {
+      document.getElementById('tbl-desktop').innerHTML = `
+        <div class="tbl-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Тур</th>
+                <th>Початок</th>
+                <th>Кінець</th>
+                <th>Осіб</th>
+                <th>Сума</th>
+                <th>Дата заявки</th>
+                <th>Статус</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${bookingsList.map(b => `
+                <tr>
+                  <td style="min-width:160px">
+                    <a href="/pages/tour-detail.html?id=${b.tour?._id}"
+                       style="color:var(--blue);font-weight:600">
+                      ${b.tour?.title || '—'}
+                    </a>
+                  </td>
+                  <td style="white-space:nowrap">${fmt(b.tour?.startDate)}</td>
+                  <td style="white-space:nowrap">${fmt(b.tour?.endDate)}</td>
+                  <td>${b.persons}</td>
+                  <td style="white-space:nowrap;font-weight:600">
+                    ${Number(b.totalPrice).toLocaleString('uk-UA')} грн
+                  </td>
+                  <td style="white-space:nowrap">${fmt(b.createdAt)}</td>
+                  <td>${BADGE[b.status] || b.status}</td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>`;
+    }
+
+    /* ── Мобільні картки ────────────────────────────── */
+    function renderMobile() {
+      document.getElementById('tbl-mobile').innerHTML = bookingsList.map((b, i) => `
+        <div class="booking-card" onclick="openPopup(${i})">
+          <div class="bc-left">
+            <div class="bc-title">${b.tour?.title || '—'}</div>
+            <div class="bc-date">✈️ ${fmt(b.tour?.startDate)}</div>
+          </div>
+          <div class="bc-right">
+            ${BADGE[b.status] || b.status}
+            <span class="bc-arrow">›</span>
+          </div>
+        </div>`).join('');
+    }
+
+    /* ── Попап ──────────────────────────────────────── */
+    function openPopup(i) {
+      const b = bookingsList[i];
+      document.getElementById('popup-title').textContent = b.tour?.title || 'Бронювання';
+      document.getElementById('popup-rows').innerHTML = `
+        <div class="popup-row">
+          <span class="lbl">✈️ Початок</span>
+          <span class="val">${fmt(b.tour?.startDate)}</span>
+        </div>
+        <div class="popup-row">
+          <span class="lbl">🏁 Кінець</span>
+          <span class="val">${fmt(b.tour?.endDate)}</span>
+        </div>
+        <div class="popup-row">
+          <span class="lbl">👥 Кількість осіб</span>
+          <span class="val">${b.persons}</span>
+        </div>
+        <div class="popup-row">
+          <span class="lbl">💰 Сума</span>
+          <span class="val price">${Number(b.totalPrice).toLocaleString('uk-UA')} грн</span>
+        </div>
+        <div class="popup-row">
+          <span class="lbl">📅 Дата заявки</span>
+          <span class="val">${fmt(b.createdAt)}</span>
+        </div>
+        <div class="popup-row">
+          <span class="lbl">📋 Статус</span>
+          <span class="val">${BADGE_TEXT[b.status] || b.status}</span>
+        </div>`;
+      document.getElementById('popup-overlay').classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closePopup(e) {
+      if (e && e.target !== document.getElementById('popup-overlay')) return;
+      document.getElementById('popup-overlay').classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    // Закрити свайпом вниз (touch)
+    let touchStartY = 0;
+    document.getElementById('popup').addEventListener('touchstart', e => {
+      touchStartY = e.touches[0].clientY;
+    });
+    document.getElementById('popup').addEventListener('touchmove', e => {
+      if (e.touches[0].clientY - touchStartY > 60) closePopup();
+    });
+
     load();
   </script>
 </body>
