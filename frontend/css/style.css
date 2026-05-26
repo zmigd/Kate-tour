@@ -58,6 +58,7 @@ button, input, select, textarea { font-family: inherit; }
   top: 0;
   z-index: 100;
   box-shadow: 0 1px 4px rgba(0,0,0,.06);
+  overflow: visible;
 }
 .nav-inner {
   max-width: 1200px;
@@ -106,6 +107,99 @@ button, input, select, textarea { font-family: inherit; }
 }
 .btn-nav-outline:hover {
   background: var(--blue) !important;
+  color: #fff !important;
+}
+
+/* ── Burger button ────────────────────────────────────── */
+.burger {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  width: 40px;
+  height: 40px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  transition: background .15s;
+  flex-shrink: 0;
+}
+.burger:hover { background: var(--bg); }
+.burger span {
+  display: block;
+  width: 22px;
+  height: 2px;
+  background: var(--text);
+  border-radius: 2px;
+  transition: transform .25s, opacity .2s;
+  transform-origin: center;
+}
+.burger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.burger.open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+.burger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+/* ── Mobile nav drawer ────────────────────────────────── */
+.mobile-nav {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #fff;
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 8px 24px rgba(0,0,0,.12);
+  z-index: 99;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height .3s ease;
+}
+.mobile-nav.open { max-height: 500px; }
+.mobile-nav-links {
+  display: flex;
+  flex-direction: column;
+  padding: .4rem 0 .8rem;
+}
+.mobile-nav-links a {
+  padding: .85rem 1.5rem;
+  font-size: .95rem;
+  font-weight: 500;
+  color: var(--text-2);
+  border-bottom: 1px solid var(--bg);
+  transition: background .15s, color .15s;
+  display: flex;
+  align-items: center;
+}
+.mobile-nav-links a:last-child { border-bottom: none; }
+.mobile-nav-links a:hover { background: var(--bg); color: var(--blue); }
+.mobile-nav-user {
+  padding: .85rem 1.5rem;
+  font-size: .88rem;
+  font-weight: 600;
+  color: var(--muted);
+  border-bottom: 1px solid var(--bg);
+  background: var(--bg);
+}
+.mobile-nav-manager {
+  color: var(--blue) !important;
+  font-weight: 600 !important;
+}
+.mobile-nav-logout { color: var(--red) !important; }
+.mobile-nav-register {
+  margin: .6rem 1.5rem 0 !important;
+  padding: .8rem 1.5rem !important;
+  background: var(--blue) !important;
+  color: #fff !important;
+  border-radius: var(--radius-sm) !important;
+  text-align: center !important;
+  font-weight: 600 !important;
+  justify-content: center !important;
+  border-bottom: none !important;
+}
+.mobile-nav-register:hover {
+  background: var(--blue-dark) !important;
   color: #fff !important;
 }
 
@@ -982,12 +1076,12 @@ button, input, select, textarea { font-family: inherit; }
    MOBILE — 768px
 ═══════════════════════════════════════════════════════ */
 @media (max-width: 768px) {
-  /* Navbar */
+  /* Navbar → burger mode */
   .nav-inner { padding: 0 1rem; height: 56px; }
   .logo { font-size: 1.1rem; }
-  .nav-links { gap: 1rem; }
-  .nav-links a { font-size: .8rem; }
-  .nav-user { display: none; }
+  .nav-links { display: none; }
+  .burger { display: flex; }
+  .mobile-nav { display: block; }
 
   /* Hero */
   .hero { padding: 3.5rem 1rem 3rem; }
@@ -1083,10 +1177,4 @@ button, input, select, textarea { font-family: inherit; }
   .info-grid { grid-template-columns: 1fr; }
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
   .services-checklist { grid-template-columns: 1fr; }
-
-  /* Navbar — show only essential links */
-  .nav-links a:not(.btn-nav-outline):not(#logout-btn) {
-    display: none;
-  }
-  .nav-links a[href="/pages/tours.html"] { display: flex; }
 }
