@@ -13,7 +13,7 @@
   <div class="history-wrap">
     <h2>Мої бронювання</h2>
     <div id="alert"></div>
-    <div class="tbl-wrap" id="tbl-wrap">
+    <div id="tbl-wrap">
       <div class="loading">Завантаження...</div>
     </div>
   </div>
@@ -52,6 +52,7 @@
           return;
         }
         wrap.innerHTML = `
+          <div class="tbl-card">
           <div class="tbl-scroll">
             <table>
               <thead>
@@ -83,6 +84,7 @@
                   </tr>`).join('')}
               </tbody>
             </table>
+          </div>
           </div>`;
       } catch (err) {
         document.getElementById('alert').innerHTML =
