@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Користувачі — TourAgency</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .role-badge {
+      display: inline-block;
+      padding: .2rem .55rem;
+      border-radius: 20px;
+      font-size: .75rem;
+      font-weight: 600;
+      letter-spacing: .03em;
+    }
+    .role-badge.admin   { background: #fef3c7; color: #92400e; }
+    .role-badge.manager { background: #dbeafe; color: #1e40af; }
+    .role-badge.client  { background: #d1fae5; color: #065f46; }
+
+    .role-sel {
+      padding: .25rem .5rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: .82rem;
+      background: var(--bg-card);
+      color: var(--text);
+      cursor: pointer;
+    }
+    .role-sel:focus { outline: 2px solid var(--primary); outline-offset: 1px; }
+
+    .user-avatar {
+      width: 34px; height: 34px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: #fff;
+      font-weight: 700;
+      font-size: .9rem;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .user-info { display: flex; align-items: center; gap: .65rem; }
+
+    .stat-chips { display: flex; gap: .6rem; flex-wrap: wrap; margin-bottom: 1.2rem; }
+    .stat-chip {
+      padding: .3rem .8rem;
+      border-radius: 20px;
+      font-size: .8rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: border-color .15s;
+    }
+    .stat-chip.all     { background: #f3f4f6; color: var(--text-2); }
+    .stat-chip.admin   { background: #fef3c7; color: #92400e; }
+    .stat-chip.manager { background: #dbeafe; color: #1e40af; }
+    .stat-chip.client  { background: #d1fae5; color: #065f46; }
+    .stat-chip.active  { border-color: currentColor; }
+
+    .search-row { display: flex; gap: .7rem; margin-bottom: 1.2rem; flex-wrap: wrap; }
+    .search-row input {
+      flex: 1; min-width: 200px;
+      padding: .45rem .75rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: .9rem;
+      background: var(--bg-card);
+      color: var(--text);
+    }
+    .search-row input:focus { outline: 2px solid var(--primary); outline-offset: 1px; border-color: transparent; }
+
+    .btn-del {
+      padding: .22rem .55rem;
+      border: 1px solid #fca5a5;
+      background: #fff1f1;
+      color: #b91c1c;
+      border-radius: 6px;
+      font-size: .78rem;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    .btn-del:hover { background: #fee2e2; }
+
+    .confirm-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.45);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 999;
+    }
+    .confirm-box {
+      background: var(--bg-card);
+      border-radius: 12px;
+      padding: 1.8rem 2rem;
+      max-width: 380px; width: 90%;
+      box-shadow: 0 20px 60px rgba(0,0,0,.2);
+      text-align: center;
+    }
+    .confirm-box h3 { margin: 0 0 .5rem; font-size: 1.1rem; }
+    .confirm-box p  { margin: 0 0 1.4rem; color: var(--muted); font-size: .9rem; }
+    .confirm-actions { display: flex; gap: .7rem; justify-content: center; }
+  </style>
+</head>
+<body>
+
+  <nav class="navbar" id="main-nav"></nav>
+
+  <div class="mgr-layout">
+    <nav class="mgr-sidebar" id="mgr-sidebar"></nav>
+
+    <main class="mgr-content">
+      <h2>Користувачі системи</h2>
+      <div id="alert"></div>
+
+      <!-- Фільтр по ролі -->
+      <div class="stat-chips" id="role-chips">
+        <span class="stat-chip all active"  data-role="">Всі <span id="cnt-all"></span></span>
+        <span class="stat-chip admin"        data-role="admin">Адміни <span id="cnt-admin"></span></span>
+        <span class="stat-chip manager"      data-role="manager">Менеджери <span id="cnt-manager"></span></span>
+        <span class="stat-chip client"       data-role="client">Клієнти <span id="cnt-client"></span></span>
+      </div>
+
+      <!-- Пошук -->
+      <div class="search-row">
+        <input id="search" type="text" placeholder="Пошук за ім'ям, email або телефоном…" oninput="debounceLoad()">
+      </div>
+
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Користувач</th>
+              <th>Email</th>
+              <th>Телефон</th>
+              <th>Роль</th>
+              <th>Дата реєстрації</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+
+  <!-- Підтвердження видалення -->
+  <div class="confirm-overlay" id="confirm-overlay" style="display:none">
+    <div class="confirm-box">
+      <h3>Видалити користувача?</h3>
+      <p id="confirm-text">Цю дію неможливо скасувати.</p>
+      <div class="confirm-actions">
+        <button class="btn btn-secondary" onclick="closeConfirm()">Скасувати</button>
+        <button class="btn btn-primary" style="background:#dc2626;border-color:#dc2626" id="confirm-btn">Видалити</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/nav.js"></script>
+  <script src="/js/manager.js"></script>
+  <script>
+    const me = checkAdmin();
+    renderSidebar('users');
+
+    let currentRole = '';
+    let debounceTimer = null;
+    let allUsers = [];
+
+    /* ── Фільтр-чіпи ──────────────────────────── */
+    document.getElementById('role-chips').addEventListener('click', e => {
+      const chip = e.target.closest('[data-role]');
+      if (!chip) return;
+      document.querySelectorAll('.stat-chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      currentRole = chip.dataset.role;
+      renderTable();
+    });
+
+    function debounceLoad() {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(renderTable, 300);
+    }
+
+    /* ── Завантаження ─────────────────────────── */
+    async function load() {
+      const tbody = document.getElementById('tbody');
+      tbody.innerHTML = '<tr><td colspan="6" class="loading">Завантаження…</td></tr>';
+      try {
+        allUsers = await api.get('/users');
+        updateCounts();
+        renderTable();
+      } catch (err) {
+        showAlert(err.message, 'error');
+        tbody.innerHTML = '';
+      }
+    }
+
+    function updateCounts() {
+      document.getElementById('cnt-all').textContent     = `(${allUsers.length})`;
+      document.getElementById('cnt-admin').textContent   = `(${allUsers.filter(u => u.role==='admin').length})`;
+      document.getElementById('cnt-manager').textContent = `(${allUsers.filter(u => u.role==='manager').length})`;
+      document.getElementById('cnt-client').textContent  = `(${allUsers.filter(u => u.role==='client').length})`;
+    }
+
+    function renderTable() {
+      const search = document.getElementById('search').value.trim().toLowerCase();
+      let list = allUsers;
+      if (currentRole) list = list.filter(u => u.role === currentRole);
+      if (search) list = list.filter(u =>
+        u.name.toLowerCase().includes(search) ||
+        u.email.toLowerCase().includes(search) ||
+        (u.phone || '').toLowerCase().includes(search)
+      );
+
+      const tbody = document.getElementById('tbody');
+      if (!list.length) {
+        tbody.innerHTML = '<tr><td colspan="6"><div class="empty"><p>Користувачів не знайдено</p></div></td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = list.map(u => {
+        const initials = u.name.trim().split(' ').map(w => w[0]).slice(0,2).join('').toUpperCase();
+        const isSelf = me && u._id === me.id;
+        return `
+          <tr>
+            <td>
+              <div class="user-info">
+                <div class="user-avatar">${initials}</div>
+                <div>
+                  <strong>${u.name}</strong>
+                  ${isSelf ? '<span style="font-size:.72rem;color:var(--muted);margin-left:.3rem">(ви)</span>' : ''}
+                </div>
+              </div>
+            </td>
+            <td>${u.email}</td>
+            <td>${u.phone || '—'}</td>
+            <td>
+              ${isSelf
+                ? `<span class="role-badge ${u.role}">${roleLabel(u.role)}</span>`
+                : `<select class="role-sel" data-id="${u._id}" data-current="${u.role}" onchange="changeRole('${u._id}', this)">
+                    <option value="client"  ${u.role==='client'  ?'selected':''}>Клієнт</option>
+                    <option value="manager" ${u.role==='manager' ?'selected':''}>Менеджер</option>
+                    <option value="admin"   ${u.role==='admin'   ?'selected':''}>Адмін</option>
+                  </select>`
+              }
+            </td>
+            <td>${new Date(u.createdAt).toLocaleDateString('uk-UA')}</td>
+            <td>
+              ${isSelf ? '' : `<button class="btn-del" onclick="askDelete('${u._id}','${escHtml(u.name)}')">Видалити</button>`}
+            </td>
+          </tr>`;
+      }).join('');
+    }
+
+    function roleLabel(r) {
+      return { admin: 'Адмін', manager: 'Менеджер', client: 'Клієнт' }[r] || r;
+    }
+
+    function escHtml(s) { return s.replace(/'/g, "\\'"); }
+
+    /* ── Зміна ролі ───────────────────────────── */
+    async function changeRole(id, sel) {
+      const newRole = sel.value;
+      const prev = sel.dataset.current;
+      try {
+        await api.patch('/users/' + id + '/role', { role: newRole });
+        sel.dataset.current = newRole;
+        showAlert(`Роль змінено на «${roleLabel(newRole)}»`, 'success');
+        const u = allUsers.find(x => x._id === id);
+        if (u) u.role = newRole;
+        updateCounts();
+      } catch (err) {
+        sel.value = prev;
+        showAlert(err.message, 'error');
+      }
+    }
+
+    /* ── Видалення ────────────────────────────── */
+    let pendingDeleteId = null;
+
+    function askDelete(id, name) {
+      pendingDeleteId = id;
+      document.getElementById('confirm-text').textContent =
+        `Ви справді хочете видалити «${name}»? Цю дію неможливо скасувати.`;
+      document.getElementById('confirm-overlay').style.display = 'flex';
+    }
+
+    function closeConfirm() {
+      pendingDeleteId = null;
+      document.getElementById('confirm-overlay').style.display = 'none';
+    }
+
+    document.getElementById('confirm-btn').addEventListener('click', async () => {
+      if (!pendingDeleteId) return;
+      const id = pendingDeleteId;
+      closeConfirm();
+      try {
+        await api.delete('/users/' + id);
+        allUsers = allUsers.filter(u => u._id !== id);
+        updateCounts();
+        renderTable();
+        showAlert('Користувача видалено', 'success');
+      } catch (err) {
+        showAlert(err.message, 'error');
+      }
+    });
+
+    document.getElementById('confirm-overlay').addEventListener('click', e => {
+      if (e.target === document.getElementById('confirm-overlay')) closeConfirm();
+    });
+
+    /* ── Helpers ──────────────────────────────── */
+    function showAlert(msg, type) {
+      const el = document.getElementById('alert');
+      el.innerHTML = `<div class="alert alert-${type}">${msg}</div>`;
+      setTimeout(() => el.innerHTML = '', 3000);
+    }
+
+    load();
+  </script>
+</body>
+</html>

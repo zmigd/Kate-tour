@@ -43,13 +43,14 @@ Tour/
 │   │   ├── authController.js     # Реєстрація, логін, профіль
 │   │   ├── tourController.js     # CRUD турів
 │   │   ├── bookingController.js  # CRUD бронювань
+│   │   ├── userController.js     # CRUD користувачів (адмін)
 │   │   ├── countryController.js
 │   │   ├── cityController.js
 │   │   ├── hotelController.js
 │   │   └── serviceController.js
 │   ├── middleware/
 │   │   ├── auth.js               # Перевірка JWT токену (protect)
-│   │   └── role.js               # Перевірка ролі менеджера
+│   │   └── role.js               # Перевірка ролі: manager / admin
 │   ├── models/                   # Mongoose схеми колекцій
 │   │   ├── User.js
 │   │   ├── Tour.js
@@ -62,6 +63,7 @@ Tour/
 │   │   ├── auth.js
 │   │   ├── tours.js
 │   │   ├── bookings.js
+│   │   ├── users.js              # Управління користувачами (адмін)
 │   │   ├── countries.js
 │   │   ├── cities.js
 │   │   ├── hotels.js
@@ -92,10 +94,11 @@ Tour/
     │   ├── tour-detail.html      # Деталі туру + форма бронювання
     │   ├── history.html          # Мої бронювання
     │   ├── profile.html          # Профіль користувача
-    │   └── manager/              # Панель менеджера
+    │   └── manager/              # Панель менеджера / адміна
     │       ├── dashboard.html    # Статистика та останні бронювання
     │       ├── tours.html        # Управління турами (drag-drop фото)
     │       ├── bookings.html     # Управління бронюваннями
+    │       ├── users.html        # Управління користувачами (тільки адмін)
     │       ├── countries.html
     │       ├── cities.html
     │       ├── hotels.html
@@ -109,8 +112,8 @@ Tour/
 
 | Роль | Email | Пароль | Доступ |
 |------|-------|--------|--------|
-| **Менеджер (адмін)** | admin@tour.com | 123456 | Панель менеджера, всі CRUD |
-| **Менеджер** | manager@tour.com | 123456 | Панель менеджера, всі CRUD |
+| **Адмін** | admin@tour.com | 123456 | Панель менеджера + управління користувачами та ролями |
+| **Менеджер** | manager@tour.com | 123456 | Панель менеджера, всі CRUD (тури, бронювання, довідники) |
 | **Клієнт** | client@tour.com | 123456 | Перегляд турів, бронювання |
 
 ---
@@ -136,12 +139,23 @@ Tour/
 | **Бронювання** | Всі бронювання, зміна статусу (pending → confirmed / cancelled) |
 | **Довідники** | CRUD для країн, міст, готелів, послуг |
 
+### Для адміністраторів
+
+Адмін має весь доступ менеджера, плюс:
+
+| Сторінка | Опис |
+|----------|------|
+| **Користувачі** | Список всіх користувачів з пошуком та фільтрацією по ролі |
+| **Зміна ролі** | Підвищення / пониження ролі будь-якого користувача (client ↔ manager ↔ admin) |
+| **Видалення користувача** | Видалення облікового запису з підтвердженням |
+
 ### Технічні особливості
 
 - **Drag-and-drop фото** — перетягни зображення у форму туру, Multer зберігає у `frontend/assets/images/`
 - **Автотривалість туру** — вибери дату початку і кінця, кількість днів підраховується сама
 - **Адаптивний дизайн** — бургер-меню на мобільному, картки замість таблиць у «Моїх бронюваннях»
 - **Захист маршрутів** — JWT middleware на всіх приватних ендпоінтах API і сторінках менеджера
+- **Рольова ієрархія** — три рівні доступу: `client` → `manager` → `admin`; реєстрація через публічну форму не дозволяє обрати роль `admin`
 
 ---
 
@@ -259,6 +273,31 @@ Authorization: Bearer <token>
 
 ---
 
+### Користувачі `/api/users` *(тільки адмін)*
+
+| Метод | URL | Опис |
+|-------|-----|------|
+| `GET` | `/api/users` | Список всіх користувачів (фільтр: `?role=`, `?search=`) |
+| `PATCH` | `/api/users/:id/role` | Змінити роль користувача |
+| `DELETE` | `/api/users/:id` | Видалити користувача |
+
+**GET /api/users** — приклади фільтрації:
+```
+GET /api/users?role=client
+GET /api/users?search=іван
+GET /api/users?role=manager&search=@gmail
+```
+
+**PATCH /api/users/:id/role**
+```json
+{ "role": "manager" }
+```
+Допустимі значення: `client` | `manager` | `admin`
+
+> Адмін не може змінити власну роль або видалити власний акаунт.
+
+---
+
 ### Завантаження фото `/api/upload`
 
 | Метод | URL | Доступ |
@@ -283,7 +322,7 @@ Authorization: Bearer <token>
 | name | String | required |
 | email | String | required, unique |
 | password | String | bcrypt-хеш |
-| role | String | `client` \| `manager` (default: client) |
+| role | String | `client` \| `manager` \| `admin` (default: client) |
 | phone | String | |
 | createdAt | Date | auto |
 

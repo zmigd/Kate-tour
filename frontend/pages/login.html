@@ -34,7 +34,8 @@
       <hr class="divider">
       <div style="background:#F9FAFB;border-radius:8px;padding:.9rem 1rem;font-size:.8rem;color:var(--muted)">
         <strong style="color:var(--text-2)">Тестові акаунти:</strong><br>
-        👔 admin@tour.com · 123456 (менеджер)<br>
+        🔑 admin@tour.com · 123456 (адмін)<br>
+        👔 manager@tour.com · 123456 (менеджер)<br>
         👤 client@tour.com · 123456 (клієнт)
       </div>
 
@@ -65,7 +66,7 @@
         });
         localStorage.setItem('token', data.token);
         localStorage.setItem('user',  JSON.stringify(data.user));
-        window.location.href = data.user.role === 'manager'
+        window.location.href = (data.user.role === 'manager' || data.user.role === 'admin')
           ? '/pages/manager/dashboard.html' : '/';
       } catch (err) {
         alertEl.innerHTML = `<div class="alert alert-error">${err.message}</div>`;

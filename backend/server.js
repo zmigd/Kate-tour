@@ -23,6 +23,7 @@ app.use('/api/cities',    require('./routes/cities'));
 app.use('/api/hotels',    require('./routes/hotels'));
 app.use('/api/services',  require('./routes/services'));
 app.use('/api/upload',    require('./routes/upload'));
+app.use('/api/users',     require('./routes/users'));
 
 // Fallback → index.html
 app.get('*', (req, res) => {

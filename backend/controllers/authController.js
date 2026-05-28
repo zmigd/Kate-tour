@@ -10,7 +10,8 @@ exports.register = async (req, res) => {
     if (await User.findOne({ email }))
       return res.status(400).json({ message: 'Email already in use' });
 
-    const user = await User.create({ name, email, password, role, phone });
+    const safeRole = ['client', 'manager'].includes(role) ? role : 'client';
+    const user = await User.create({ name, email, password, role: safeRole, phone });
     res.status(201).json({ token: generateToken(user._id), user: { id: user._id, name, email, role } });
   } catch (err) {
     res.status(500).json({ message: err.message });

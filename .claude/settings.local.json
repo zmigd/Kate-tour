@@ -1,7 +1,19 @@
 {
   "permissions": {
     "allow": [
-      "PowerShell($r = Invoke-RestMethod -Uri \"http://localhost:5000/api/tours?isHot=true\" -Method Get; Write-Host \"Hot tours: $\\($r.Count\\)\"; $r | Select-Object title, price | Format-Table)"
+      "PowerShell($r = Invoke-RestMethod -Uri \"http://localhost:5000/api/tours?isHot=true\" -Method Get; Write-Host \"Hot tours: $\\($r.Count\\)\"; $r | Select-Object title, price | Format-Table)",
+      "PowerShell(Get-Process node -ErrorAction SilentlyContinue)",
+      "PowerShell($body = '{\"email\":\"admin@tour.com\",\"password\":\"123456\"}'; $res = Invoke-RestMethod -Uri \"http://localhost:5000/api/auth/login\" -Method POST -Body $body -ContentType \"application/json\"; $res.user)",
+      "Bash(curl -s -X POST http://localhost:5000/api/auth/login -H \"Content-Type: application/json\" -d '{\"email\":\"admin@tour.com\",\"password\":\"123456\"}')",
+      "Bash(python3 -c \"import sys,json; users=json.load\\(sys.stdin\\); [print\\(u['name'], '-', u['role']\\) for u in users]\")",
+      "Bash(curl -s -X POST http://localhost:5000/api/auth/login -H \"Content-Type: application/json\" -d '{\"email\":\"manager@tour.com\",\"password\":\"123456\"}')",
+      "mcp__8d875eb3-2eef-4490-b969-85a6d78abd32__generate_diagram",
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "mcp__Claude_in_Chrome__browser_batch",
+      "Skill(docx)",
+      "Skill(docx:*)",
+      "Bash(npm list *)",
+      "PowerShell(Get-Item \"D:\\\\Study\\\\Tour\\\\Курсова_Розділи_10_11_12.docx\" | Select-Object Name, @{N='Size_KB';E={[math]::Round\\($_.Length/1KB,1\\)}}, LastWriteTime)"
     ]
   }
 }

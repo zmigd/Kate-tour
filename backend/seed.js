@@ -24,7 +24,7 @@ async function seed() {
 
   // ── Користувачі ──────────────────────────────────────────
   await User.create([
-    { name: 'Адміністратор', email: 'admin@tour.com',    password: '123456', role: 'manager', phone: '+380501234567' },
+    { name: 'Адміністратор', email: 'admin@tour.com',    password: '123456', role: 'admin',   phone: '+380501234567' },
     { name: 'Менеджер',      email: 'manager@tour.com',  password: '123456', role: 'manager', phone: '+380502345678' },
     { name: 'Клієнт',        email: 'client@tour.com',   password: '123456', role: 'client',  phone: '+380503456789' },
   ]);
